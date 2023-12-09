@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  db:
+    container_name: database
+    image: postgres
+    restart: always
+    ports:
+      - '15432:5432'
+
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgrespw
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  redis-db:
+    container_name: redis_database
+    image: redis
+    restart: always
+    ports:
+      - '6379:6379'
+
+    volumes:
+      - redis-data:/data
+
+  adminer:
+    links:
+      - "db:database"
+    container_name: adminer
+    image: adminer
+    restart: always
+    environment:
+      host: $POSTGRES_HOST
+    ports:
+      - 8080:8080
+
+volumes:
+  db-data:
+  redis-data:
