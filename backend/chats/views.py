@@ -129,10 +129,18 @@ class CommitView(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.Crea
 class MessageView(mixins.RetrieveModelMixin, mixins.ListModelMixin, mixins.CreateModelMixin, GenericViewSet):
     queryset = Message.objects.all()
     action_serializers = {
-        'list': MessageListSerializer,
+        'list': MessageDetailSerializer,
         'retrieve': MessageDetailSerializer,
         'create': MessageDetailSerializer,
     }
+
+    @extend_schema(responses={400: BadRequestSerializer, 200: MessageListSerializer})
+    def list(self, request: Request, *args, **kwargs) -> Response:
+        """handler for create user"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        return super(MessageView, self).list(request, *args, **kwargs)
 
     @extend_schema(request=MessageCreateRequest, responses={400: BadRequestSerializer, 200: MessageCreateResponse})
     def create(self, request, *args, **kwargs):

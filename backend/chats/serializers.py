@@ -26,8 +26,12 @@ def check_contractor_existence(contractor_id: Optional[int]) -> Optional[User]:
     return contractor
 
 
-def check_contract_existence(pk: Optional[int]) -> Optional[User]:
+def check_contract_existence(pk: Optional[int]) -> Optional[Contract]:
     return get_object_or_404(Contract, pk=pk)
+
+
+def check_commit_existence(pk: Optional[int]) -> Optional[Commit]:
+    return get_object_or_404(Commit, pk=pk)
 
 
 def check_fields_contain(obj: dict, fields: Iterable):
@@ -45,9 +49,18 @@ class MessageDetailSerializer(serializers.ModelSerializer):
             ret['sender'] = getattr(self.context['request'].user, 'id')
         return ReturnDict(ret, serializer=self)
 
+    def is_valid(self, *, raise_exception=False):
+        self.initial_data['sender_id'] = self.context['request'].user.id
+        if self.context.get('view').action in ('list', 'retrieve'):
+            self.initial_data['text'] = 'val'
+        return super(MessageDetailSerializer, self).is_valid(raise_exception=raise_exception)
+
+    def create(self, validated_data):
+        return super(MessageDetailSerializer, self).create(self.initial_data)
+
     class Meta:
         model = Message
-        fields = ('text', 'contract')
+        fields = ('text', 'commit', 'sender_id')
 
 
 class MessageListSerializer(serializers.ListSerializer):
@@ -56,13 +69,14 @@ class MessageListSerializer(serializers.ListSerializer):
     @property
     def data(self):
         ret = super(MessageListSerializer, self).data
+        print(ret)
         if not isinstance(self.instance, Message):
             ret['sender'] = getattr(self.context['request'].user, 'id')
         return ReturnDict(ret, serializer=self)
 
     class Meta:
         model = Message
-        fields = ('text', 'contract')
+        fields = ('text', 'commit')
 
 
 class CommitCreateSerializer(serializers.ModelSerializer):
@@ -87,10 +101,12 @@ class CommitCreateSerializer(serializers.ModelSerializer):
             if prev_commit:
                 if prev_commit.current_solution.get(field_name, {}).get('value') == passed_value:
                     solution[field_name] = prev_commit.current_solution[field_name]
+                    solution[field_name]['comments'] = []
                     continue
             solution[field_name] = {
                 'value': passed_value,
-                'history': [passed_value] + (prev_commit.current_solution.get(field_name, {}).get('history', []) if prev_commit else []),
+                'history': [passed_value] + (
+                    prev_commit.current_solution.get(field_name, {}).get('history', []) if prev_commit else []),
                 'comments': []  # {"sender": "comment"}
             }
         self.initial_data['current_solution'] = solution
@@ -110,6 +126,7 @@ class CommitDetailSerializer(serializers.ModelSerializer):
     @property
     def data(self):
         ret = super(CommitDetailSerializer, self).data
+        ret["id"] = self.instance.id if self.instance else -1
         if ret['attachments']:
             ret['attachments'] = Attachments.objects.filter(pk__in=ret['attachments']).all()
         ret['messages'] = MessageDetailSerializer(self.instance.messages.all(), many=True).data
@@ -204,7 +221,7 @@ class ContractDetailSerializer(serializers.ModelSerializer):
 
         if self.is_detail:
             ret |= {
-                'commits': CommitDetailSerializer(self.instance.commits.all(), many=True).data,
+                'commits': CommitDetailSerializer(self.instance.commits.last()).data,
             }
 
         return ReturnDict(ret, serializer=self)
