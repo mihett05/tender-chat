@@ -1,3 +1,19 @@
 from django.db import models
+from django.contrib.auth.models import AbstractUser as _User
 
-# Create your models here.
+
+class UserTypes(models.TextChoices):
+    CUSTOMER = 'customer'
+    CONTRACTOR = 'contractor'
+
+
+class User(_User):
+    image = models.ImageField("image", blank=False, null=False, upload_to='images/')
+    email = models.EmailField("email address", unique=True, null=False, blank=False)
+    company = models.CharField("company name", unique=True)
+    user_type = models.CharField(choices=UserTypes.choices)
+
+    REQUIRED_FIELDS = ('email', 'password')
+
+    class Meta:
+        pass

@@ -6,11 +6,11 @@ services:
     image: postgres
     restart: always
     ports:
-      - "5433:5433"
-      - "5432:5432"
+      - '15432:5432'
 
-    env_file:
-      - ".env"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgrespw
     volumes:
       - db-data:/var/lib/postgresql/data
 
@@ -19,10 +19,8 @@ services:
     image: redis
     restart: always
     ports:
-      - "6379:6379"
+      - '6379:6379'
 
-    env_file:
-      - ".env"
     volumes:
       - redis-data:/data
 
