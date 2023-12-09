@@ -38,5 +38,6 @@ class Commit(models.Model):
 
 class Message(models.Model):
     text = models.CharField()
-    contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='messages')
+    # contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_messages')
+    commit = models.ForeignKey(Commit, on_delete=models.CASCADE, default=None, related_name='messages')

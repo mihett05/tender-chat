@@ -75,8 +75,8 @@ class CommitView(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.Crea
     permission_classes = (IsChatParticipant,)
 
     action_serializers = {
-        'list': CommitDetailSerializer,
-        'retrieve': CommitListSerializer,
+        'list': CommitListSerializer,
+        'retrieve': CommitDetailSerializer,
         'update': CommitDetailSerializer,
         'create': CommitCreateSerializer,
     }
@@ -106,7 +106,8 @@ class CommitView(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.Crea
     @extend_schema(request=CommitUpdateRequest, responses={400: BadRequestSerializer, 200: CommitDetailSerializer})
     def update(self, request: Request, *args, **kwargs) -> Response:
         """handler for create user"""
-        serializer = self.get_serializer(instance=self.get_object(), data=request.data)
+        obj: Commit = self.get_object()
+        serializer = self.get_serializer(instance=obj, data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return Response(serializer.data)
@@ -114,7 +115,7 @@ class CommitView(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.Crea
     @extend_schema(responses={400: BadRequestSerializer, 200: CommitDetailSerializer})
     def retrieve(self, request: Request, *args, **kwargs) -> Response:
         """handler for create user"""
-        serializer = self.get_serializer(instance=self.get_object(), need_history=True)
+        serializer = self.get_serializer(instance=self.get_object())
         return Response(serializer.data)
 
     @extend_schema(responses={400: BadRequestSerializer, 200: CommitListSerializer})

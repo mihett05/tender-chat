@@ -1,6 +1,7 @@
 from typing import Optional, Iterable
 
 from django.contrib.auth import get_user_model
+from django.db.models import QuerySet
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
@@ -34,6 +35,7 @@ def check_fields_contain(obj: dict, fields: Iterable):
         if obj.get(field) is None:
             raise ValidationError({field: f"The field {field} is required"})
 
+
 class MessageDetailSerializer(serializers.ModelSerializer):
 
     @property
@@ -41,7 +43,7 @@ class MessageDetailSerializer(serializers.ModelSerializer):
         ret = super(MessageDetailSerializer, self).data
         if not isinstance(self.instance, Message):
             ret['sender'] = getattr(self.context['request'].user, 'id')
-        return ret
+        return ReturnDict(ret, serializer=self)
 
     class Meta:
         model = Message
@@ -56,7 +58,7 @@ class MessageListSerializer(serializers.ListSerializer):
         ret = super(MessageListSerializer, self).data
         if not isinstance(self.instance, Message):
             ret['sender'] = getattr(self.context['request'].user, 'id')
-        return ret
+        return ReturnDict(ret, serializer=self)
 
     class Meta:
         model = Message
@@ -71,18 +73,24 @@ class CommitCreateSerializer(serializers.ModelSerializer):
         check_fields_contain(self.initial_data, ('contract_id', 'current_solution'))
         # check_sender_type(user)
         contract = check_contract_existence(self.initial_data.get('contract_id'))
-
-        self.instance: Commit
+        prev_commit: Commit = contract.commits.last()
+        if prev_commit:
+            prev_commit.status = CommitTypes.FINISHED
+            prev_commit.save()
 
         self.initial_data['status'] = CommitTypes.PROCESSED
-        self.initial_data['parent'] = contract.commits.last() or None
+        self.initial_data['parent'] = prev_commit or None
         self.initial_data['sender'] = user
 
         solution = {}
-        for filed_name, passed_value in self.initial_data['current_solution'].items():
-            solution[filed_name] = {
+        for field_name, passed_value in self.initial_data['current_solution'].items():
+            if prev_commit:
+                if prev_commit.current_solution.get(field_name, {}).get('value') == passed_value:
+                    solution[field_name] = prev_commit.current_solution[field_name]
+                    continue
+            solution[field_name] = {
                 'value': passed_value,
-                'history': [passed_value],
+                'history': [passed_value] + (prev_commit.current_solution.get(field_name, {}).get('history', []) if prev_commit else []),
                 'comments': []  # {"sender": "comment"}
             }
         self.initial_data['current_solution'] = solution
@@ -102,8 +110,20 @@ class CommitDetailSerializer(serializers.ModelSerializer):
     @property
     def data(self):
         ret = super(CommitDetailSerializer, self).data
-        ret['attachments'] = Attachments.objects.filter(pk__in=ret['attachments']).all()
-        return ret
+        if ret['attachments']:
+            ret['attachments'] = Attachments.objects.filter(pk__in=ret['attachments']).all()
+        ret['messages'] = MessageDetailSerializer(self.instance.messages.all(), many=True).data
+        return ReturnDict(ret, serializer=self)
+
+    def is_valid(self, *, raise_exception=False):
+        if self.context['view'].action == 'update':
+            self.instance: Commit
+            if self.instance != self.instance.contract.commits.last():
+                raise ValidationError("You can add comments only for a last commit")
+            for field_name, comment in self.initial_data.get('current_solution', {}).items():
+                if self.instance.current_solution.get(field_name) is None:
+                    raise ValidationError("You can't add comments to non-existent filed")
+        return super(CommitDetailSerializer, self).is_valid(raise_exception=raise_exception)
 
     def update(self, instance, validated_data):
         # current_solution scheme is "current_solution": {"field_name": "comment", ...}
@@ -111,15 +131,18 @@ class CommitDetailSerializer(serializers.ModelSerializer):
         for filed_name, comment in validated_data.get('current_solution', {}).items():
             if not isinstance(self.instance.current_solution.get(filed_name), dict):
                 self.instance.current_solution[filed_name] = {}
-            self.instance.current_solution[filed_name]['comments'] = self.instance.current_solution[filed_name].get('comments', []) + [comment]
+            self.instance.current_solution[filed_name]['comments'] = self.instance.current_solution[filed_name].get(
+                'comments', []) + [comment]
         self.instance.save()
         return self.instance
 
     def to_representation(self, instance):
-        if not self.instance:
-            self.instance = instance
-            return self.data
-        return super(CommitDetailSerializer, self).to_representation(instance)
+        data = super(CommitDetailSerializer, self).to_representation(instance)
+        if isinstance(instance, Commit):
+            data['messages'] = MessageDetailSerializer(instance.messages.all(), many=True).data
+            if data['attachments']:
+                data['attachments'] = Attachments.objects.filter(pk__in=data['attachments']).all()
+        return data
 
     class Meta:
         model = Commit
@@ -182,7 +205,6 @@ class ContractDetailSerializer(serializers.ModelSerializer):
         if self.is_detail:
             ret |= {
                 'commits': CommitDetailSerializer(self.instance.commits.all(), many=True).data,
-                'messages': MessageDetailSerializer(self.instance.messages.all(), many=True).data,
             }
 
         return ReturnDict(ret, serializer=self)
