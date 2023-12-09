@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
-
-from solution.models import Solution, FormPart
 
 User = get_user_model()
 
@@ -10,16 +9,22 @@ class CommitTypes(models.TextChoices):
     ACCEPTED = 'accepted'
     REJECTED = 'rejected'
     PROCESSED = 'processed'
+    FINISHED = 'finished'
 
 
 class Contract(models.Model):
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='customer_chats')
     contractor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contractor_chats')
-    solution = models.ForeignKey(Solution, on_delete=models.CASCADE, related_name='contract')
+    solution = models.JSONField(default=dict)
+
+
+class Attachments(models.Model):
+    file = models.FileField(upload_to='attachments/')
+    contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='attachments')
 
 
 class Commit(models.Model):
-    form_part_data = models.ForeignKey(FormPart, on_delete=models.CASCADE, related_name='commit')
+    current_solution = models.JSONField(default=dict)
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='commits')
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_commits')
     parent = models.ForeignKey(
@@ -28,6 +33,7 @@ class Commit(models.Model):
         related_name='previous_commit'
     )
     status = models.CharField(choices=CommitTypes.choices, default=CommitTypes.PROCESSED)
+    attachments = ArrayField(models.IntegerField(), default=list)
 
 
 class Message(models.Model):

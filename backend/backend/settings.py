@@ -31,7 +31,6 @@ INSTALLED_APPS = (
     # my apps
     'users',
     'chats',
-    'solution',
     'authentication',
 )
 
@@ -103,7 +102,8 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [{"address": f'redis://{os.environ.get("REDIS_USER")}:{os.environ.get("REDIS_PASS")}@{os.environ.get("REDIS_HOST")}:{os.environ.get("REDIS_PORT")}'}],
+            'hosts': [{
+                          "address": f'redis://{os.environ.get("REDIS_USER")}:{os.environ.get("REDIS_PASS")}@{os.environ.get("REDIS_HOST")}:{os.environ.get("REDIS_PORT")}'}],
         },
     },
 }
