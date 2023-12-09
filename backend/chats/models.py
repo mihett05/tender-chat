@@ -28,10 +28,10 @@ class Commit(models.Model):
         related_name='previous_commit'
     )
     status = models.CharField(choices=CommitTypes.choices, default=CommitTypes.PROCESSED)
-    comment = models.CharField()
 
 
 class Message(models.Model):
     text = models.CharField()
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='messages')
+    commit = models.ForeignKey(Commit, on_delete=models.CASCADE, related_name='commit_messages')
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_messages')
