@@ -39,9 +39,6 @@ class MessageListSerializer(serializers.ListSerializer):
 
 
 class CommitCreateSerializer(serializers.ModelSerializer):
-    def __init__(self, **kwargs):
-        self.contract_id = kwargs.pop('contract_id', -1)
-        super(CommitCreateSerializer, self).__init__(**kwargs)
 
     def is_valid(self, *, raise_exception=False):
         user = self.context['request'].user
@@ -50,12 +47,11 @@ class CommitCreateSerializer(serializers.ModelSerializer):
                                   f'(excepted: {UserTypes.CUSTOMER}, got {getattr(user, "user_type")})')
 
         self.instance: Commit
-        contract = Contract.objects.filter(pk=self.contract_id).first()
+        contract = Contract.objects.filter(pk=self.initial_data['contract_id']).first()
 
-        self.initial_data['contract'] = self.contract_id
         self.initial_data['status'] = CommitTypes.PROCESSED
         self.initial_data['parent'] = contract.commits.last() or None
-        self.initial_data['sender'] = getattr(user, 'id')
+        self.initial_data['sender'] = user.id
 
         solution = {}
         for filed_name, passed_value in self.initial_data['current_solution'].items():
@@ -89,14 +85,14 @@ class CommitDetailSerializer(serializers.ModelSerializer):
         return ret
 
     def update(self, instance, validated_data):
-        # current_solution scheme is "current_solution": {"field_name": "passed_value", ...}
+        # current_solution scheme is "current_solution": {"field_name": "comment", ...}
         self.instance: Commit
 
-        for filed_name, passed_value in validated_data.items():
+        for filed_name, comment in validated_data.items():
             self.instance.current_solution[filed_name] = {
-                "value": passed_value,
-                "history": [passed_value] + self.instance.current_solution.get(filed_name, dict()).get('history', []),
-                "comments": self.instance.current_solution.get(filed_name, dict()).get('comments', [])
+                "value": self.instance.current_solution.get(filed_name, ""),
+                "history": self.instance.current_solution.get(filed_name, dict()).get('history', []),
+                "comments": self.instance.current_solution.get(filed_name, dict()).get('comments', []) + [comment]
             }
 
     def to_representation(self, instance):
@@ -106,6 +102,10 @@ class CommitDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Commit
         fields = ('current_solution', 'status', 'attachments')
+        extra_kwargs = {
+            'status': {'required': False},
+            'attachments': {'required': False},
+        }
 
 
 class CommitListSerializer(serializers.ListSerializer):
@@ -127,7 +127,7 @@ class ContractCreateSerializer(serializers.ModelSerializer):
             raise ValidationError(f'Only "customer" user can create a commit\n'
                                   f'(excepted: {UserTypes.CUSTOMER}, got {getattr(user, "user_type")})')
 
-        self.initial_data['customer'] = getattr(user, 'id')
+        self.initial_data['customer'] = user.id
 
         return super(ContractCreateSerializer, self).is_valid(raise_exception=raise_exception)
 

@@ -8,6 +8,8 @@ from rest_framework.viewsets import GenericViewSet
 
 from authentication.serializers import BadRequestSerializer
 from chats.models import Contract, Commit, Message
+from chats.schemes import ContractCreateRequest, ContractCreateResponse, ContractDetailResponse, ContractListResponse, \
+    CommitCreateRequest, CommitUpdateRequest, MessageCreateRequest, MessageCreateResponse, CommitCreateResponse
 from chats.serializers import (
     ContractCreateSerializer, ContractListSerializer, ContractDetailSerializer,
     CommitCreateSerializer, CommitDetailSerializer, CommitListSerializer,
@@ -25,14 +27,14 @@ class ContractCreateView(mixins.CreateModelMixin, GenericViewSet):
     serializer_class = ContractCreateSerializer
     permission_classes = (IsCustomer,)
 
-    @extend_schema(request=ContractCreateSerializer, responses={400: BadRequestSerializer, 200: int})
+    @extend_schema(request=ContractCreateRequest, responses={400: BadRequestSerializer, 200: ContractCreateResponse})
     def create(self, request: Request, *args, **kwargs) -> Response:
         """handler for create user"""
         serializer: serializers.Serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response({'chat_id': serializer.instance.id}, status=status.HTTP_201_CREATED, headers=headers)
+        return Response({'contract_id': serializer.instance.id}, status=status.HTTP_201_CREATED, headers=headers)
 
 
 class ContractView(mixins.RetrieveModelMixin, mixins.ListModelMixin, GenericViewSet):
@@ -57,13 +59,13 @@ class ContractView(mixins.RetrieveModelMixin, mixins.ListModelMixin, GenericView
 
         return super(ContractView, self).get_serializer_class()
 
-    @extend_schema(responses={400: BadRequestSerializer, 200: ContractDetailSerializer})
+    @extend_schema(responses={400: BadRequestSerializer, 200: ContractDetailResponse})
     def retrieve(self, request: Request, *args, **kwargs) -> Response:
         """handler for create user"""
         serializer = self.get_serializer(instance=self.get_object())
         return Response(serializer.data)
 
-    @extend_schema(responses={400: BadRequestSerializer, 200: CommitListSerializer})
+    @extend_schema(responses={400: BadRequestSerializer, 200: ContractListResponse})
     def list(self, request: Request, *args, **kwargs) -> Response:
         """handler for create user"""
         queryset: QuerySet = self.get_queryset()
@@ -78,17 +80,17 @@ class CommitCreateView(mixins.CreateModelMixin, GenericViewSet):
     serializer_class = CommitCreateSerializer
     permission_classes = (IsCustomer,)
 
-    @extend_schema(request=CommitCreateSerializer, responses={400: BadRequestSerializer, 200: int})
+    @extend_schema(request=CommitCreateRequest, responses={400: BadRequestSerializer, 200: CommitCreateResponse})
     def create(self, request: Request, *args, **kwargs) -> Response:
         """handler for create user"""
-        serializer: serializers.Serializer = self.get_serializer(chat_id=self.kwargs.get('id'), data=request.data)
+        serializer: serializers.Serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response({'comment_id': serializer.instance.id}, status=status.HTTP_201_CREATED, headers=headers)
 
 
-class CommitView(mixins.RetrieveModelMixin, mixins.ListModelMixin, GenericViewSet):
+class CommitView(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.ListModelMixin, GenericViewSet):
     """
     View for get/set/delete chat
     """
@@ -97,7 +99,8 @@ class CommitView(mixins.RetrieveModelMixin, mixins.ListModelMixin, GenericViewSe
 
     action_serializers = {
         'list': CommitDetailSerializer,
-        'retrieve': CommitListSerializer
+        'retrieve': CommitListSerializer,
+        'update': CommitDetailSerializer
     }
 
     def get_serializer_class(self):
@@ -109,6 +112,14 @@ class CommitView(mixins.RetrieveModelMixin, mixins.ListModelMixin, GenericViewSe
     def get_queryset(self):
         queryset = super(CommitView, self).get_queryset()
         return queryset.filter(Q(customer__id=self.request.user.id) | Q(contractor__id=self.request.user.id))
+
+    @extend_schema(request=CommitUpdateRequest, responses={400: BadRequestSerializer, 200: CommitDetailSerializer})
+    def update(self, request: Request, *args, **kwargs) -> Response:
+        """handler for create user"""
+        serializer = self.get_serializer(instance=self.get_object(), data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
 
     @extend_schema(responses={400: BadRequestSerializer, 200: CommitDetailSerializer})
     def retrieve(self, request: Request, *args, **kwargs) -> Response:
@@ -126,6 +137,10 @@ class CommitView(mixins.RetrieveModelMixin, mixins.ListModelMixin, GenericViewSe
 
 class MessageCreateView(mixins.CreateModelMixin, GenericViewSet):
     serializer_class = MessageDetailSerializer
+
+    @extend_schema(request=MessageCreateRequest, responses={400: BadRequestSerializer, 200: MessageCreateResponse})
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
 
 
 class MessageView(mixins.RetrieveModelMixin, mixins.ListModelMixin, GenericViewSet):
