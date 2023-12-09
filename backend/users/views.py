@@ -62,7 +62,7 @@ class UserPrivateDataView(mixins.UpdateModelMixin,
         serialized.update(request.user, serialized.initial_data)
         return Response(UserProfileSerializer(instance=request.user).data, status=status.HTTP_200_OK)
 
-    @extend_schema(request=UserPasswordChangeSerializer, responses={400: BadRequestSerializer, 200: "string"})
+    @extend_schema(request=UserPasswordChangeSerializer, responses={400: BadRequestSerializer, 200: str})
     def partial_update(self, request: Request, *args, **kwargs) -> Response:
         """handler for update user password"""
 

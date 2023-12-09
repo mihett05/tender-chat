@@ -5,7 +5,6 @@ from rest_framework.utils.serializer_helpers import ReturnDict
 
 from chats.models import Commit, Message, Contract, Attachments, CommitTypes
 from users.models import UserTypes
-from users.serializers import UserProfileSerializer
 
 User = get_user_model()
 
@@ -39,34 +38,10 @@ class MessageListSerializer(serializers.ListSerializer):
         fields = ('text', 'contract')
 
 
-class CommitDetailSerializer(serializers.ModelSerializer):
-
-    @property
-    def data(self):
-        ret = super(CommitDetailSerializer, self).data
-        ret['attachments'] = Attachments.objects.filter(pk__in=ret['attachments']).all()
-        return ret
-
-    def update(self, instance, validated_data):
-        # current_solution scheme is "current_solution": {"field_name": "passed_value", ...}
-        self.instance: Commit
-
-        for filed_name, passed_value in validated_data.items():
-            self.instance.current_solution[filed_name] = {
-                "value": passed_value,
-                "history": [passed_value] + self.instance.current_solution.get(filed_name, dict()).get('history', []),
-                "comments": self.instance.current_solution.get(filed_name, dict()).get('comments', [])
-            }
-
-    class Meta:
-        model = Commit
-        fields = ('current_solution', 'status', 'attachments')
-
-
-class CommitCreationSerializer(serializers.ModelSerializer):
+class CommitCreateSerializer(serializers.ModelSerializer):
     def __init__(self, **kwargs):
         self.contract_id = kwargs.pop('contract_id', -1)
-        super(CommitCreationSerializer, self).__init__(**kwargs)
+        super(CommitCreateSerializer, self).__init__(**kwargs)
 
     def is_valid(self, *, raise_exception=False):
         user = self.context['request'].user
@@ -91,18 +66,57 @@ class CommitCreationSerializer(serializers.ModelSerializer):
             }
         self.initial_data['solution'] = solution
 
-        return super(CommitCreationSerializer, self).is_valid(raise_exception=raise_exception)
+        return super(CommitCreateSerializer, self).is_valid(raise_exception=raise_exception)
 
     def create(self, validated_data):
         print(validated_data)
         obj = self.Meta.model.objects.create(**validated_data)
         print(obj, type(obj), obj.__dict__)
         obj.save()
-        # return super(CommitCreationSerializer, self).create(validated_data)
+        # return super(CommitCreateSerializer, self).create(validated_data)
 
     class Meta:
         model = Commit
         fields = ('current_solution',)
+
+
+class CommitDetailSerializer(serializers.ModelSerializer):
+
+    @property
+    def data(self):
+        ret = super(CommitDetailSerializer, self).data
+        ret['attachments'] = Attachments.objects.filter(pk__in=ret['attachments']).all()
+        return ret
+
+    def update(self, instance, validated_data):
+        # current_solution scheme is "current_solution": {"field_name": "passed_value", ...}
+        self.instance: Commit
+
+        for filed_name, passed_value in validated_data.items():
+            self.instance.current_solution[filed_name] = {
+                "value": passed_value,
+                "history": [passed_value] + self.instance.current_solution.get(filed_name, dict()).get('history', []),
+                "comments": self.instance.current_solution.get(filed_name, dict()).get('comments', [])
+            }
+
+    def to_representation(self, instance):
+        self.instance = instance
+        return self.data
+
+    class Meta:
+        model = Commit
+        fields = ('current_solution', 'status', 'attachments')
+
+
+class CommitListSerializer(serializers.ListSerializer):
+    child = CommitDetailSerializer()
+
+    def to_representation(self, data):
+        return self.child.to_representation(data)
+
+    class Meta:
+        model = Commit
+        fields = ('current_solution', 'status', 'attachments')
 
 
 class ContractCreateSerializer(serializers.ModelSerializer):
@@ -119,6 +133,7 @@ class ContractCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Contract
+        fields = ('solution',)
 
 
 class ContractDetailSerializer(serializers.ModelSerializer):

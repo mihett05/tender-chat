@@ -16,7 +16,7 @@ urlpatterns = [
 
     # urls for apps
     path('users/', include('users.urls')),
-    # path('chats/', include('chats.urls')),
+    path('chats/', include('chats.urls')),
     path('auth/', include('authentication.urls')),
     path('', include(static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT))),
 ]
