@@ -8,12 +8,12 @@ class UserTypes(models.TextChoices):
 
 
 class User(_User):
-    image = models.ImageField("image", blank=False, null=False, upload_to='images/')
+    image = models.ImageField("image", blank=True, null=True, upload_to='images/')
     email = models.EmailField("email address", unique=True, null=False, blank=False)
-    company = models.CharField("company name", unique=True)
-    user_type = models.CharField(choices=UserTypes.choices)
+    company = models.CharField("company name", unique=True, editable=False)
+    user_type = models.CharField(choices=UserTypes.choices, editable=False)
 
-    REQUIRED_FIELDS = ('email', 'password')
+    REQUIRED_FIELDS = ('email', 'password', 'company', 'user_type')
 
     class Meta:
         pass
