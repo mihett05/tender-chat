@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 from users.models import UserTypes
 
@@ -7,15 +8,25 @@ User = get_user_model()
 
 
 class UserSignUpSerializer(serializers.ModelSerializer):
+    def is_valid(self, *, raise_exception=False):
+        types = UserTypes.CONTRACTOR.lower(), UserTypes.CUSTOMER.lower()
+        if self.initial_data.get('user_type') not in types:
+            raise ValidationError({"user_type": f"must be one of {types}"})
+
+        if not self.initial_data.get('company'):
+            raise ValidationError({"company": f"This field is required"})
+        return super(UserSignUpSerializer, self).is_valid(raise_exception=raise_exception)
+
     def create(self, validated_data) -> User:
+        print(validated_data)
         user = User.objects.create_user(
-            email=validated_data['email'],
-            username=validated_data['username'],
-            password=validated_data['password'],
-            company=validated_data['company'],
-            image=validated_data['image'],
+            email=self.initial_data['email'],
+            username=self.initial_data['username'],
+            password=self.initial_data['password'],
+            company=self.initial_data['company'],
+            image=self.initial_data.get('image', ''),
             user_type=(
-                UserTypes.CUSTOMER if validated_data['user_type'].lower() == UserTypes.CUSTOMER
+                UserTypes.CUSTOMER if self.initial_data['user_type'].lower() == UserTypes.CUSTOMER
                 else UserTypes.CONTRACTOR),
             is_active=True,
         )

@@ -1,6 +1,9 @@
+from typing import Optional, Iterable
+
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+from rest_framework.generics import get_object_or_404
 from rest_framework.utils.serializer_helpers import ReturnDict
 
 from chats.models import Commit, Message, Contract, Attachments, CommitTypes
@@ -8,6 +11,28 @@ from users.models import UserTypes
 
 User = get_user_model()
 
+
+def check_sender_type(user: User):
+    if getattr(user, 'user_type').lower() != UserTypes.CUSTOMER:
+        raise ValidationError(f'Only "customer" user can create a commit\n'
+                              f'(excepted: {UserTypes.CUSTOMER}, got {getattr(user, "user_type")})')
+
+
+def check_contractor_existence(contractor_id: Optional[int]) -> Optional[User]:
+    contractor = get_object_or_404(User, pk=contractor_id)
+    if contractor.user_type.lower() != UserTypes.CONTRACTOR.lower():
+        raise ValidationError(dict(contractor=f'must be a {UserTypes.CONTRACTOR.lower()}'))
+    return contractor
+
+
+def check_contract_existence(pk: Optional[int]) -> Optional[User]:
+    return get_object_or_404(Contract, pk=pk)
+
+
+def check_fields_contain(obj: dict, fields: Iterable):
+    for field in fields:
+        if obj.get(field) is None:
+            raise ValidationError({field: f"The field {field} is required"})
 
 class MessageDetailSerializer(serializers.ModelSerializer):
 
@@ -42,16 +67,16 @@ class CommitCreateSerializer(serializers.ModelSerializer):
 
     def is_valid(self, *, raise_exception=False):
         user = self.context['request'].user
-        if getattr(user, 'user_type').lower() != UserTypes.CUSTOMER:
-            raise ValidationError(f'Only "customer" user can create a commit\n'
-                                  f'(excepted: {UserTypes.CUSTOMER}, got {getattr(user, "user_type")})')
+
+        check_fields_contain(self.initial_data, ('contract_id', 'current_solution'))
+        # check_sender_type(user)
+        contract = check_contract_existence(self.initial_data.get('contract_id'))
 
         self.instance: Commit
-        contract = Contract.objects.filter(pk=self.initial_data['contract_id']).first()
 
         self.initial_data['status'] = CommitTypes.PROCESSED
         self.initial_data['parent'] = contract.commits.last() or None
-        self.initial_data['sender'] = user.id
+        self.initial_data['sender'] = user
 
         solution = {}
         for filed_name, passed_value in self.initial_data['current_solution'].items():
@@ -60,16 +85,12 @@ class CommitCreateSerializer(serializers.ModelSerializer):
                 'history': [passed_value],
                 'comments': []  # {"sender": "comment"}
             }
-        self.initial_data['solution'] = solution
+        self.initial_data['current_solution'] = solution
 
         return super(CommitCreateSerializer, self).is_valid(raise_exception=raise_exception)
 
     def create(self, validated_data):
-        print(validated_data)
-        obj = self.Meta.model.objects.create(**validated_data)
-        print(obj, type(obj), obj.__dict__)
-        obj.save()
-        # return super(CommitCreateSerializer, self).create(validated_data)
+        return super(CommitCreateSerializer, self).create(self.initial_data)
 
     class Meta:
         model = Commit
@@ -87,17 +108,18 @@ class CommitDetailSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         # current_solution scheme is "current_solution": {"field_name": "comment", ...}
         self.instance: Commit
-
-        for filed_name, comment in validated_data.items():
-            self.instance.current_solution[filed_name] = {
-                "value": self.instance.current_solution.get(filed_name, ""),
-                "history": self.instance.current_solution.get(filed_name, dict()).get('history', []),
-                "comments": self.instance.current_solution.get(filed_name, dict()).get('comments', []) + [comment]
-            }
+        for filed_name, comment in validated_data.get('current_solution', {}).items():
+            if not isinstance(self.instance.current_solution.get(filed_name), dict):
+                self.instance.current_solution[filed_name] = {}
+            self.instance.current_solution[filed_name]['comments'] = self.instance.current_solution[filed_name].get('comments', []) + [comment]
+        self.instance.save()
+        return self.instance
 
     def to_representation(self, instance):
-        self.instance = instance
-        return self.data
+        if not self.instance:
+            self.instance = instance
+            return self.data
+        return super(CommitDetailSerializer, self).to_representation(instance)
 
     class Meta:
         model = Commit
@@ -123,13 +145,18 @@ class ContractCreateSerializer(serializers.ModelSerializer):
 
     def is_valid(self, *, raise_exception=False):
         user = self.context['request'].user
-        if getattr(user, 'user_type').lower() != UserTypes.CUSTOMER:
-            raise ValidationError(f'Only "customer" user can create a commit\n'
-                                  f'(excepted: {UserTypes.CUSTOMER}, got {getattr(user, "user_type")})')
 
-        self.initial_data['customer'] = user.id
+        check_sender_type(user)
+        contractor = check_contractor_existence(self.initial_data.get('contractor'))
+
+        self.initial_data['customer_id'] = user.id
+        self.initial_data['contractor_id'] = contractor.id
+        self.initial_data['contractor'] = contractor
 
         return super(ContractCreateSerializer, self).is_valid(raise_exception=raise_exception)
+
+    def create(self, validated_data):
+        return super(ContractCreateSerializer, self).create(validated_data=self.initial_data)
 
     class Meta:
         model = Contract
