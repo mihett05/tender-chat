@@ -24,9 +24,9 @@ class Attachments(models.Model):
 
 
 class Commit(models.Model):
-    current_solution = models.JSONField(default=dict)
-    contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='commits')
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_commits')
+    contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='commits')
+    current_solution = models.JSONField(default=dict)
     parent = models.ForeignKey(
         'Commit', on_delete=models.DO_NOTHING,
         default=None, null=True, blank=True,
@@ -39,5 +39,4 @@ class Commit(models.Model):
 class Message(models.Model):
     text = models.CharField()
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='messages')
-    commit = models.ForeignKey(Commit, on_delete=models.CASCADE, related_name='commit_messages')
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_messages')
