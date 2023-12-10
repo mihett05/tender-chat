@@ -1,13 +1,16 @@
 import { Box, useTheme } from '@mui/material';
 import React from 'react';
 import ChatButton from './chat-button';
+import ChatCalendar from './chat-calendar';
 
 interface ChatMessageProps {
   children: React.ReactNode;
   align: 'left' | 'right'; // арабы в пролёте
   buttons?: { [text: string]: string }; // Текст кнопки -> Значение кнопки
+  calendar?: boolean;
   buttonsVariant?: 'column' | 'row';
   onButtonPressed?: (value: string) => unknown;
+  onCalendar?: (value: Date) => unknown;
   disabled?: boolean;
 }
 
@@ -18,6 +21,8 @@ function ChatMessage({
   buttonsVariant,
   onButtonPressed,
   disabled,
+  calendar,
+  onCalendar,
 }: ChatMessageProps) {
   const theme = useTheme();
   return (
@@ -29,16 +34,14 @@ function ChatMessage({
       >
         <Box
           sx={{
-            bgcolor: align === 'left' ? theme.palette.secondary.main : theme.palette.primary.main,
-            padding: 1,
-            borderRadius: theme.shape.borderRadius,
+            bgcolor: align === 'left' ? theme.palette.primary.main : theme.palette.secondary.main,
+            padding: 2,
+            borderRadius: align === 'left' ? '10px 10px 10px 0' : '10px 10px 0 10px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'start',
-            color:
-              align === 'left'
-                ? theme.palette.secondary.contrastText
-                : theme.palette.primary.contrastText,
+            color: theme.palette.text.primary,
+            boxShadow: 10,
           }}
         >
           {text}
@@ -61,6 +64,7 @@ function ChatMessage({
                   {text}
                 </ChatButton>
               ))}
+            {calendar && <ChatCalendar onSelected={(value) => onCalendar && onCalendar(value)} />}
           </Box>
         )}
       </Box>

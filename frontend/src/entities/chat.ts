@@ -6,6 +6,7 @@ export type Message = {
     [key: string]: string;
   };
   answered?: boolean;
+  calendar?: boolean;
 };
 
 export type Chat = {

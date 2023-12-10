@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from '@mui/material';
+import { Button, useTheme } from '@mui/material';
 
 interface ChatButtonProps {
   children: React.ReactNode;
@@ -7,6 +7,7 @@ interface ChatButtonProps {
 }
 
 function ChatButton({ children: text, onClick: onPress }: ChatButtonProps) {
+  const theme = useTheme();
   return (
     <Button
       onClick={onPress}
@@ -16,6 +17,10 @@ function ChatButton({ children: text, onClick: onPress }: ChatButtonProps) {
         px: 1,
         py: 0.5,
         width: '100%',
+        bgcolor: theme.palette.secondary.main,
+        color: theme.palette.text.primary,
+        borderRadius: 10,
+        boxShadow: 10,
       }}
     >
       {text}

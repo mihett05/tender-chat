@@ -3,6 +3,8 @@ import Chat from '~/features/chat/ui/chat';
 import { useChat } from '~/features/chat/lib/hooks';
 import { Format, Message } from '~/entities/chat';
 import CreateContract from '~/widgets/create-contract/ui';
+import Layout from '~/shared/ui/layout';
+import ContractsList from '~/widgets/contracts-list/ui';
 
 // const createMessageFromField = (id: number, field: FormField): Message => ({
 //   id,
@@ -76,7 +78,11 @@ function CreateContractPage() {
   //     disabled={disabled}
   //   />
   // );
-  return <CreateContract />;
+  return (
+    <Layout left={<ContractsList />}>
+      <CreateContract />
+    </Layout>
+  );
 }
 
 export default CreateContractPage;
