@@ -27,7 +27,6 @@ class ContractResponse(serializers.Serializer):
 
 class ContractDetailResponse(ContractResponse):
     commits = CommitDetailSerializer
-    messages = MessageDetailSerializer
 
 
 class ContractListResponse(serializers.Serializer):
