@@ -58,6 +58,7 @@ class MessageDetailSerializer(serializers.ModelSerializer):
         ret = super(MessageDetailSerializer, self).data
         if not isinstance(self.instance, Message):
             ret['sender'] = getattr(self.context['request'].user, 'id')
+        ret['id'] = self.instance.id if self.instance else -1
         return ReturnDict(ret, serializer=self)
 
     def is_valid(self, *, raise_exception=False):
@@ -175,6 +176,7 @@ class CommitDetailSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super(CommitDetailSerializer, self).to_representation(instance)
         if isinstance(instance, Commit):
+            data["id"] = instance.id
             data['messages'] = MessageDetailSerializer(instance.messages.all(), many=True).data
             if data['attachments']:
                 data['attachments'] = Attachments.objects.filter(pk__in=data['attachments']).all()
@@ -201,6 +203,11 @@ class CommitListSerializer(serializers.ListSerializer):
 
 
 class ContractCreateSerializer(serializers.ModelSerializer):
+    @property
+    def data(self):
+        data = super(ContractCreateSerializer, self).data
+        data['id'] = self.instance.id
+        return data
 
     def is_valid(self, *, raise_exception=False):
         user = self.context['request'].user

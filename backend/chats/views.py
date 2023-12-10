@@ -1,9 +1,13 @@
+import string
+from random import choices
+
 from django.contrib.auth import get_user_model
 from django.db.models import QuerySet, Q
 from drf_spectacular.utils import extend_schema
 from rest_framework import (mixins, status, serializers)
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 
 from authentication.serializers import BadRequestSerializer
@@ -15,6 +19,7 @@ from chats.serializers import (
     CommitCreateSerializer, CommitDetailSerializer, CommitListSerializer,
     MessageDetailSerializer, MessageListSerializer, ContractUpdateSerializer,
 )
+from chats.utils import create_word
 from users.permissions import IsChatParticipant, IsCustomer
 
 User = get_user_model()
@@ -167,3 +172,10 @@ class MessageView(mixins.RetrieveModelMixin,
             return self.action_serializers.get(self.action, self.serializer_class)
 
         return super(MessageView, self).get_serializer_class()
+
+
+class CreateContractView(APIView):
+    def post(self, request: Request, *args, **kwargs):
+        name = ''.join(choices(string.ascii_letters + '0123456789', k=16))
+        file_url = create_word(request.data, name)
+        return Response({'file_url': file_url})

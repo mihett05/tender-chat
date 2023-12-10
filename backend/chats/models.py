@@ -33,6 +33,7 @@ class Contract(models.Model):
 
 
 class Attachments(models.Model):
+    name = models.CharField()
     file = models.FileField(upload_to='attachments/')
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='attachments')
 

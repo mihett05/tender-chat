@@ -1,7 +1,12 @@
 import difflib
 import json
-from pprint import pprint
+import os
 from typing import List
+
+from docxtpl import DocxTemplate
+
+from __config__.config import BACKEND_PATH
+from chats.conv import num2text
 
 
 def simple_json_comparison(old_version: dict, new_version: dict) -> List[str]:
@@ -11,7 +16,7 @@ def simple_json_comparison(old_version: dict, new_version: dict) -> List[str]:
     return list(difflib.Differ().compare(old, new))
 
 
-def example():
+def example_comp():
     text1 = {"field_1": "field_1", "field_2": "field_2"}
     text2 = {"field_1": "update", "field_2": "field_2"}
 
@@ -19,3 +24,20 @@ def example():
 
     print(obj)
     print(*obj, sep='\n')
+
+
+def create_word(data: dict, file_path):
+    # open template
+    path = BACKEND_PATH
+    doc = DocxTemplate(f"{path}/static/tpl.docx")
+
+    for key, value in data.items():
+        value: str
+        if value.isdigit():
+            data[f'{key}_string'] = num2text(int(value))
+
+    # render & save docx file
+    doc.render(data)
+    doc.save(f"{path}/media/{file_path}.docx")
+    return f"{path}/media/{file_path}.docx"
+
