@@ -269,8 +269,7 @@ class ContractUpdateSerializer(serializers.ModelSerializer):
     def is_valid(self, *, raise_exception=False):
         check_lifetime_contract(self.instance)
         if self.instance.contract_type in (ContractTypes.REJECTED, ContractTypes.FINISHED):
-            raise ValidationError("can't change status of comp"
-                                  "leted contract")
+            raise ValidationError("can't change status of completed contract")
         if self.initial_data.get('contract_type') not in ('accepted', 'rejected'):
             raise ValidationError({"contract_type": 'Must be "accepted/rejected"'})
 
