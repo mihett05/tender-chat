@@ -7,7 +7,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.utils.serializer_helpers import ReturnDict
 
-from chats.models import Commit, Message, Contract, Attachments, CommitTypes
+from chats.models import Commit, Message, Contract, Attachments, CommitTypes, ContractTypes
 from chats.utils import simple_json_comparison
 from users.models import UserTypes
 
@@ -70,7 +70,6 @@ class MessageListSerializer(serializers.ListSerializer):
     @property
     def data(self):
         ret = super(MessageListSerializer, self).data
-        print(ret)
         if not isinstance(self.instance, Message):
             ret['sender'] = getattr(self.context['request'].user, 'id')
         return ReturnDict(ret, serializer=self)
@@ -226,9 +225,7 @@ class ContractDetailSerializer(serializers.ModelSerializer):
         }
 
         if self.is_detail:
-            ret |= {
-                'commits': CommitDetailSerializer(self.instance.commits.last()).data,
-            }
+            ret['commits'] = CommitDetailSerializer(self.instance.commits.all()).data,
 
         return ReturnDict(ret, serializer=self)
 
@@ -250,3 +247,32 @@ class ContractListSerializer(serializers.ListSerializer):
     class Meta:
         model = Contract
         fields = ('solution',)
+
+
+class ContractUpdateSerializer(serializers.ModelSerializer):
+
+    def is_valid(self, *, raise_exception=False):
+        if self.instance.contract_type in (ContractTypes.REJECTED, ContractTypes.FINISHED):
+            raise ValidationError("can't change status of comp"
+                                  "leted contract")
+        if self.initial_data.get('contract_type') not in ('accepted', 'rejected'):
+            raise ValidationError({"contract_type": 'Must be "accepted/rejected"'})
+
+        user: User = self.context['request'].user
+
+        contract_type = ContractTypes.REJECTED
+        if self.initial_data.get('contract_type') == 'accepted':
+            if user.user_type == UserTypes.CUSTOMER and self.instance.contract_type != ContractTypes.ACCEPTED_CONTRACTOR:
+                raise ValidationError("contractor must accept contract first")
+            contract_type = (
+                ContractTypes.FINISHED if user.user_type == UserTypes.CUSTOMER
+                else ContractTypes.ACCEPTED_CONTRACTOR
+            )
+            # TODO: add generation of contract in pdf/docs
+
+        self.initial_data['contract_type'] = contract_type
+        return super(ContractUpdateSerializer, self).is_valid(raise_exception=raise_exception)
+
+    class Meta:
+        model = Contract
+        fields = ('contract_type',)
