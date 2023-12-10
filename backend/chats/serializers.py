@@ -1,7 +1,7 @@
 from typing import Optional, Iterable
 
 from django.contrib.auth import get_user_model
-from django.db.models import QuerySet
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
@@ -18,6 +18,16 @@ def check_sender_type(user: User):
     if getattr(user, 'user_type').lower() != UserTypes.CUSTOMER:
         raise ValidationError(f'Only "customer" user can create a commit\n'
                               f'(excepted: {UserTypes.CUSTOMER}, got {getattr(user, "user_type")})')
+
+
+def check_lifetime_contract(contract: Contract):
+    if (contract.created_at - timezone.now()) >= timezone.timedelta(days=10):
+        raise ValidationError('contract lifetime period is ended')
+
+
+def check_lifetime_commit(commit: Commit):
+    if (commit.created_at - timezone.now()) >= timezone.timedelta(days=2):
+        raise ValidationError('commit lifetime period is ended')
 
 
 def check_contractor_existence(contractor_id: Optional[int]) -> Optional[User]:
@@ -87,7 +97,10 @@ class CommitCreateSerializer(serializers.ModelSerializer):
         check_fields_contain(self.initial_data, ('contract_id', 'current_solution'))
         # check_sender_type(user)
         contract = check_contract_existence(self.initial_data.get('contract_id'))
+        check_lifetime_contract(contract)
         prev_commit: Commit = contract.commits.last()
+        if prev_commit:
+            check_lifetime_commit(prev_commit)
 
         solution = {}
         for field_name, passed_value in self.initial_data['current_solution'].items():
@@ -142,6 +155,7 @@ class CommitDetailSerializer(serializers.ModelSerializer):
             self.instance: Commit
             if self.instance != self.instance.contract.commits.last():
                 raise ValidationError("You can add comments only for a last commit")
+            check_lifetime_commit(self.instance)
             for field_name, comment in self.initial_data.get('current_solution', {}).items():
                 if self.instance.current_solution.get(field_name) is None:
                     raise ValidationError("You can't add comments to non-existent filed")
@@ -216,6 +230,7 @@ class ContractDetailSerializer(serializers.ModelSerializer):
     @property
     def data(self):
         self.instance: Contract
+        # check_lifetime_contract(self.instance)
         other = self.instance.contractor if self.context[
                                                 'request'].user == self.instance.customer else self.instance.customer
 
@@ -252,6 +267,7 @@ class ContractListSerializer(serializers.ListSerializer):
 class ContractUpdateSerializer(serializers.ModelSerializer):
 
     def is_valid(self, *, raise_exception=False):
+        check_lifetime_contract(self.instance)
         if self.instance.contract_type in (ContractTypes.REJECTED, ContractTypes.FINISHED):
             raise ValidationError("can't change status of comp"
                                   "leted contract")

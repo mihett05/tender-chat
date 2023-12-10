@@ -29,7 +29,7 @@ class Contract(models.Model):
     contract_type = models.CharField(choices=ContractTypes.choices, default=ContractTypes.PROCESSED)
     solution = models.JSONField(default=dict)
     solution_diffs = models.JSONField(default=dict)
-    created_at = models.DateTimeField(default=datetime.datetime.now)
+    created_at = models.DateTimeField(auto_created=True)
 
 
 class Attachments(models.Model):
@@ -49,7 +49,7 @@ class Commit(models.Model):
     status = models.CharField(choices=CommitTypes.choices, default=CommitTypes.PROCESSED)
     attachments = ArrayField(models.IntegerField(), default=list)
 
-    created_at = models.DateTimeField(default=datetime.datetime.now)
+    created_at = models.DateTimeField(auto_created=True)
 
 
 class Message(models.Model):
