@@ -2,47 +2,63 @@ import decimal
 
 
 units = (
-    u'ноль',
-
-    (u'один', u'одна'),
-    (u'два', u'две'),
-
-    u'три', u'четыре', u'пять',
-    u'шесть', u'семь', u'восемь', u'девять'
+    "ноль",
+    ("один", "одна"),
+    ("два", "две"),
+    "три",
+    "четыре",
+    "пять",
+    "шесть",
+    "семь",
+    "восемь",
+    "девять",
 )
 
 teens = (
-    u'десять', u'одиннадцать',
-    u'двенадцать', u'тринадцать',
-    u'четырнадцать', u'пятнадцать',
-    u'шестнадцать', u'семнадцать',
-    u'восемнадцать', u'девятнадцать'
+    "десять",
+    "одиннадцать",
+    "двенадцать",
+    "тринадцать",
+    "четырнадцать",
+    "пятнадцать",
+    "шестнадцать",
+    "семнадцать",
+    "восемнадцать",
+    "девятнадцать",
 )
 
 tens = (
     teens,
-    u'двадцать', u'тридцать',
-    u'сорок', u'пятьдесят',
-    u'шестьдесят', u'семьдесят',
-    u'восемьдесят', u'девяносто'
+    "двадцать",
+    "тридцать",
+    "сорок",
+    "пятьдесят",
+    "шестьдесят",
+    "семьдесят",
+    "восемьдесят",
+    "девяносто",
 )
 
 hundreds = (
-    u'сто', u'двести',
-    u'триста', u'четыреста',
-    u'пятьсот', u'шестьсот',
-    u'семьсот', u'восемьсот',
-    u'девятьсот'
+    "сто",
+    "двести",
+    "триста",
+    "четыреста",
+    "пятьсот",
+    "шестьсот",
+    "семьсот",
+    "восемьсот",
+    "девятьсот",
 )
 
-orders = (# plural forms and gender
-    #((u'', u'', u''), 'm'), # ((u'рубль', u'рубля', u'рублей'), 'm'), # ((u'копейка', u'копейки', u'копеек'), 'f')
-    ((u'тысяча', u'тысячи', u'тысяч'), 'f'),
-    ((u'миллион', u'миллиона', u'миллионов'), 'm'),
-    ((u'миллиард', u'миллиарда', u'миллиардов'), 'm'),
+orders = (  # plural forms and gender
+    # ((u'', u'', u''), 'm'), # ((u'рубль', u'рубля', u'рублей'), 'm'), # ((u'копейка', u'копейки', u'копеек'), 'f')
+    (("тысяча", "тысячи", "тысяч"), "f"),
+    (("миллион", "миллиона", "миллионов"), "m"),
+    (("миллиард", "миллиарда", "миллиардов"), "m"),
 )
 
-minus = u'минус'
+minus = "минус"
 
 
 def thousand(rest, sex):
@@ -66,7 +82,7 @@ def thousand(rest, sex):
         elif x == 10:
             name_ = names[cur]
             if isinstance(name_, tuple):
-                name_ = name_[0 if sex == 'm' else 1]
+                name_ = name_[0 if sex == "m" else 1]
             name.append(name_)
             if cur >= 2 and cur <= 4:
                 plural = 1
@@ -75,18 +91,18 @@ def thousand(rest, sex):
             else:
                 plural = 2
         else:
-            name.append(names[cur-1])
+            name.append(names[cur - 1])
     return plural, name
 
 
-def num2text(num, main_units=((u'', u'', u''), 'm')):
+def num2text(num, main_units=(("", "", ""), "m")):
     """
     http://ru.wikipedia.org/wiki/Gettext#.D0.9C.D0.BD.D0.BE.D0.B6.D0.B5.D1.81.\
     D1.82.D0.B2.D0.B5.D0.BD.D0.BD.D1.8B.D0.B5_.D1.87.D0.B8.D1.81.D0.BB.D0.B0_2
     """
     _orders = (main_units,) + orders
     if num == 0:
-        return ' '.join((units[0], _orders[0][0][2])).strip() # ноль
+        return " ".join((units[0], _orders[0][0][2])).strip()  # ноль
 
     rest = abs(num)
     ord = 0
@@ -101,16 +117,16 @@ def num2text(num, main_units=((u'', u'', u''), 'm')):
     if num < 0:
         name.append(minus)
     name.reverse()
-    return ' '.join(name).strip()
+    return " ".join(name).strip()
 
 
-def decimal2text(value, places=2,
-                 int_units=(('', '', ''), 'm'),
-                 exp_units=(('', '', ''), 'm')):
+def decimal2text(
+    value, places=2, int_units=(("", "", ""), "m"), exp_units=(("", "", ""), "m")
+):
     value = decimal.Decimal(value)
     q = decimal.Decimal(10) ** -places
 
-    integral, exp = str(value.quantize(q)).split('.')
-    return u'{} {}'.format(
-        num2text(int(integral), int_units),
-        num2text(int(exp), exp_units))
+    integral, exp = str(value.quantize(q)).split(".")
+    return "{} {}".format(
+        num2text(int(integral), int_units), num2text(int(exp), exp_units)
+    )

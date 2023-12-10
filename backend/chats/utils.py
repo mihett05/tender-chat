@@ -25,20 +25,25 @@ def example_comp():
     obj = simple_json_comparison(text1, text2)
 
     print(obj)
-    print(*obj, sep='\n')
+    print(*obj, sep="\n")
 
 
-def create_word(data: dict, file_path=''.join(choices(string.ascii_letters + '0123456789', k=16))):
+def create_word(data: dict, file_path=None):
+    if not file_path:
+        file_path = "".join(choices(string.ascii_letters + "0123456789", k=16))
     # open template
     path = BACKEND_PATH
     doc = DocxTemplate(f"{path}/static/tpl.docx")
-
+    output = data.copy()
     for key, value in data.items():
         value: str
-        if value.isdigit():
-            data[f'{key}_string'] = num2text(int(value))
+        if "price" in key:
+            output[f"{key}_string"] = num2text(
+                int(float("".join(value.replace(",", ".").split()))),
+                (("рубль", "рубля", "рублей"), "m"),
+            )
 
     # render & save docx file
-    doc.render(data)
+    doc.render(output)
     doc.save(f"{path}/media/{file_path}.docx")
     return f"/media/{file_path}.docx"

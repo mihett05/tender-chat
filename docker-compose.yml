@@ -11,8 +11,9 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgrespw
+      - POSTGRES_DB=tenderhack
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - ./db-data:/var/lib/postgresql/data
 
   redis-db:
     container_name: redis_database

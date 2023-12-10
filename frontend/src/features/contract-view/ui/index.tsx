@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '~/store';
 import { addCommit } from '~/widgets/contract-chat/lib/slice';
+import { createContract } from '~/store/services/contract';
 
 const applyChanges = (commit: Commit, commits: Commit[]) => {
   const commitIndex = commits.indexOf(commit);
@@ -139,7 +140,14 @@ function ContractView() {
             m: 2,
           }}
           color="secondary"
-          onClick={() => {}}
+          onClick={async () => {
+            window
+              .open(
+                'http://localhost:8000' + (await createContract(values)).replace('/media', ''),
+                '_blank',
+              )
+              ?.focus();
+          }}
         >
           Открыть контракт
         </Button>
