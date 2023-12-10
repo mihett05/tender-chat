@@ -176,6 +176,5 @@ class MessageView(mixins.RetrieveModelMixin,
 
 class CreateContractView(APIView):
     def post(self, request: Request, *args, **kwargs):
-        name = ''.join(choices(string.ascii_letters + '0123456789', k=16))
-        file_url = create_word(request.data, name)
+        file_url = create_word(request.data)
         return Response({'file_url': file_url})
