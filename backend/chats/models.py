@@ -16,6 +16,7 @@ class Contract(models.Model):
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='customer_chats')
     contractor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contractor_chats')
     solution = models.JSONField(default=dict)
+    solution_diffs = models.JSONField(default=dict)
 
 
 class Attachments(models.Model):

@@ -8,6 +8,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.utils.serializer_helpers import ReturnDict
 
 from chats.models import Commit, Message, Contract, Attachments, CommitTypes
+from chats.utils import simple_json_comparison
 from users.models import UserTypes
 
 User = get_user_model()
@@ -88,13 +89,6 @@ class CommitCreateSerializer(serializers.ModelSerializer):
         # check_sender_type(user)
         contract = check_contract_existence(self.initial_data.get('contract_id'))
         prev_commit: Commit = contract.commits.last()
-        if prev_commit:
-            prev_commit.status = CommitTypes.FINISHED
-            prev_commit.save()
-
-        self.initial_data['status'] = CommitTypes.PROCESSED
-        self.initial_data['parent'] = prev_commit or None
-        self.initial_data['sender'] = user
 
         solution = {}
         for field_name, passed_value in self.initial_data['current_solution'].items():
@@ -110,6 +104,18 @@ class CommitCreateSerializer(serializers.ModelSerializer):
                 'comments': []  # {"sender": "comment"}
             }
         self.initial_data['current_solution'] = solution
+
+        if prev_commit:
+            contract.solution_diffs = simple_json_comparison(prev_commit.current_solution, solution)
+            prev_commit.status = CommitTypes.FINISHED
+            prev_commit.save()
+
+        contract.solution = contract.solution | solution
+        contract.save()
+
+        self.initial_data['status'] = CommitTypes.PROCESSED
+        self.initial_data['parent'] = prev_commit or None
+        self.initial_data['sender'] = user
 
         return super(CommitCreateSerializer, self).is_valid(raise_exception=raise_exception)
 
